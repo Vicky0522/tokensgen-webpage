@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="description" content="TokensGen: Harnessing Condensed Tokens for Long Video Generation">
+    <meta name="keywords" content="Long Video Generation, Text-to-Video Model">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TokensGen: Harnessing Condensed Tokens for Long Video Generation</title>
+  
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', 'G-PYVRSFMDRL');
+    </script>
+  
+    <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma-carousel@4.0.4/dist/css/bulma-carousel.min.css" />
+    <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+    <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+    <link rel="stylesheet" href="static/css/index.css">
+    <link rel="icon" href="index.html">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script defer src="static/js/fontawesome.all.min.js"></script>
+    <script src="static/js/bulma-carousel.min.js"></script>
+    <script src="static/js/bulma-slider.min.js"></script>
+    <script src="static/js/index.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+  
+   <script>
+  $(document).ready(function(){
+
+    /**
+     * 初始化轮播（按“页”计数；自定义每页 items；页驻留 dwellMs 毫秒；无限循环）
+     *
+     * @param {string} carouselId   轮播容器 #id
+     * @param {string} indicatorId  指示器 #id
+     * @param {number} dwellMs      每页停留时间 (ms)
+     * @param {Object|number} responsiveCfg  Owl responsive 配置或数字:
+     *        - 若给数字 n：表示 >=768px 显示 n 个，<768px 显示 1 个。
+     *        - 若给对象：键是断点 (数字)，值是 items 数。如 {0:1,768:2,1200:3}
+     */
+    function initializeCarousel(carouselId, indicatorId, dwellMs, responsiveCfg) {
+      var $carousel  = $(carouselId);
+      var $indicator = $(indicatorId);
+      var totalItems = $carousel.find('.item').length;
+      var pageTimer  = null;
+
+      // ---------- 解析 responsiveCfg ----------
+      var owlResponsive;
+      if (typeof responsiveCfg === 'number') {
+        // 数字：桌面 n，手机 1
+        owlResponsive = {
+          0:   { items: 1, loop: true },
+          768: { items: responsiveCfg, loop: true }
+        };
+      } else if (typeof responsiveCfg === 'object') {
+        owlResponsive = {};
+        Object.keys(responsiveCfg).forEach(function(bp){
+          owlResponsive[bp] = { items: responsiveCfg[bp], loop: true };
+        });
+      } else {
+        // 默认：桌面 2 / 手机 1
+        owlResponsive = {
+          0:   { items: 1, loop: true },
+          768: { items: 2, loop: true }
+        };
+      }
+
+      // ---------- 初始化 Owl ----------
+      var owl = $carousel.owlCarousel({
+        loop: true,
+        margin: 10,
+        nav: true,
+        autoplay: false,   // 我们自己控制页驻留时间
+        dots: false,
+        slideBy: 'page',
+        navText: [
+          "<div class='nav-button owl-prev' style='font-size: 6rem;'>‹</div>",
+          "<div class='nav-button owl-next' style='font-size: 6rem;'>›</div>"
+        ],
+        responsive: owlResponsive,
+        onInitialized: function(){
+          // 等布局完成再刷，避免首屏 1/1
+          setTimeout(function(){ updateIndicatorAndRestartTimer(); }, 0);
+        },
+        onTranslated: function(){
+          updateIndicatorAndRestartTimer();
+        }
+      });
+
+      // 手动点击箭头：清掉计时，翻页后 onTranslated 会重启
+      $carousel.on('click', '.owl-prev, .owl-next', function() {
+        clearPageTimer();
+      });
+
+      // 窗口尺寸变化：重新计算页数 + 重启计时
+      $carousel.on('resized.owl.carousel', function(){
+        updateIndicatorAndRestartTimer();
+      });
+
+      /* ---------- 计时 ---------- */
+      function clearPageTimer(){
+        if (pageTimer) {
+          clearTimeout(pageTimer);
+          pageTimer = null;
+        }
+      }
+      function startPageTimer(){
+        clearPageTimer();
+        pageTimer = setTimeout(function(){
+          $carousel.trigger('next.owl.carousel');
+        }, dwellMs);
+      }
+
+      /* ---------- 指示器 & 页信息 ---------- */
+      function updateIndicatorAndRestartTimer(){
+        var info = getPageInfo();
+        $indicator.text((info.page + 1) + '/' + info.totalPages);
+        startPageTimer();
+      }
+
+      // {page, totalPages}  page=0-based
+      function getPageInfo(){
+        var api = $carousel.data('owl.carousel');
+        if (!api) return {page:0,totalPages:1};
+
+        // 最可靠：数当前可见的 active 项
+        var visible = $carousel.find('.owl-item.active').length || 1;
+
+        // 当前第一个可见 item 的真实索引（去除克隆）
+        var relIndex = api.relative(api.current());
+
+        var page       = Math.floor(relIndex / visible);
+        var totalPages = Math.ceil(totalItems / visible);
+        return {page:page, totalPages:totalPages};
+      }
+    }
+
+    // ===== 初始化多个轮播 =====
+    var dwell = 60000; // 1 分钟
+
+    // 原 demo3：桌面 2 / 手机 1
+    initializeCarousel('#carousel-demo3', '#carousel-indicator3', dwell, {0:1,768:2,1200:2});
+    initializeCarousel('#carousel-demo4', '#carousel-indicator4', dwell, {0:1,768:1,1200:1});
+
+    // 新 demo5：不管屏幕多大，每页 1 个
+    initializeCarousel('#carousel-demo5', '#carousel-indicator5', dwell, {0:1,768:1,1200:1});
+
+    // 其它沿用默认（你需要时可补 responsiveCfg）
+    initializeCarousel('#carousel-demo1', '#carousel-indicator1', dwell, 1);
+    initializeCarousel('#carousel-demo2', '#carousel-indicator2', dwell, 1);
+    initializeCarousel('#carousel-demo6', '#carousel-indicator6', dwell, 1);
+
+  });
+</script>
+
+<style>
+  :root {
+    --cap-lines: 16;             /* 固定行数：根据你文字长度自调 */
+    --cap-line-height: 1.25;
+    --cap-height: calc(var(--cap-lines) * var(--cap-line-height) * 1em);
+  }
+  @media (max-width: 767.98px) {
+    :root {
+      --cap-lines: 17;
+      --cap-height: calc(var(--cap-lines) * var(--cap-line-height) * 1em);
+    }
+  }
+
+  .nav-button {
+    color: #333;
+    background-color: rgba(255,255,255,0.0);
+    border-radius: 50%;
+    padding: 0.5rem;
+    margin: 0 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .owl-prev, .owl-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+  }
+  .owl-prev { left: -2rem; }
+  .owl-next { right: -2rem; }
+
+  .owl-carousel.carousel-with-captions .item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 .25rem;
+  }
+  .owl-carousel.carousel-with-captions video {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Caption 容器 */
+  .carousel-with-captions .carousel-caption {
+    width: 100%;
+    margin: 0 0 0.75rem 0;
+
+    font-size: 1.1rem;
+    font-weight: 400;
+    line-height: var(--cap-line-height);
+    font-family: "Times New Roman", Times, "TimesNewRomanPSMT",
+                 "Nimbus Roman No9 L", "Songti SC", "Noto Serif CJK SC", serif;
+    font-style: italic;
+
+    height: var(--cap-height);
+    max-height: var(--cap-height);
+    min-height: var(--cap-height);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    opacity: 0.4;
+    transform: translateY(-0.25rem);
+    transition: opacity .25s ease, transform .25s ease;
+    overflow: hidden;
+
+    padding: 0 1rem;
+  }
+  .carousel-with-captions .owl-item.active .carousel-caption {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* 文本两端对齐 */
+  .carousel-with-captions .carousel-caption p {
+    margin: 0;
+    width: 100%;
+    text-align: justify;
+    text-align-last: left;         /* 想最后一行居中→center；全齐→justify */
+    text-justify: inter-ideograph;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+
+  /* 指示器与下方标题间距（可调） */
+  .carousel-indicator-spaced {
+    margin-bottom: 3rem;  /* 与 Editing 的距离 */
+  }
+  
+ .comparison-section,
+#carousel-demo5      { width: 70vw; margin-left: calc(50% - 35vw); }
+
+#carousel-demo5 .item{ width: 70vw !important; }  /* 要跟着一起改 */
+#carousel-demo5 video{ width: 100%; height: auto; aspect-ratio: 144/53; }
+
+ .ablation-section,
+#carousel-demo6      { width: 70vw; margin-left: calc(50% - 35vw); }
+
+#carousel-demo6 .item{ width: 70vw !important; }  /* 要跟着一起改 */
+#carousel-demo6 video{ width: 100%; height: auto; }
+
+/* Comparisons & Ablation：桌面端让 caption 只有 3 行高 */
+#carousel-demo5,
+#carousel-demo5 .carousel-caption,
+#carousel-demo6,
+#carousel-demo6 .carousel-caption{
+  --cap-lines : 5;
+  --cap-height: calc(var(--cap-lines) * var(--cap-line-height) * 1em);
+}
+
+/* 小屏再调一档，比如 4 行 */
+@media (max-width: 767.98px){
+  #carousel-demo5,
+  #carousel-demo5 .carousel-caption,
+  #carousel-demo6,
+  #carousel-demo6 .carousel-caption{
+    --cap-lines : 6;
+    --cap-height: calc(var(--cap-lines) * var(--cap-line-height) * 1em);
+  }
+}
+
+/* Editing：桌面端让 caption 只有 3 行高 */
+#carousel-demo4,
+#carousel-demo4 .carousel-caption{
+  --cap-lines : 6;
+  --cap-height: calc(var(--cap-lines) * var(--cap-line-height) * 1em);
+}
+#carousel-demo4 video{ width: 100%; height: auto; aspect-ratio: 1470/530; }
+
+/* 小屏再调一档，比如 4 行 */
+@media (max-width: 767.98px){
+  #carousel-demo4,
+  #carousel-demo4 .carousel-caption{
+    --cap-lines : 7;
+    --cap-height: calc(var(--cap-lines) * var(--cap-line-height) * 1em);
+  }
+}
+}
+</style>
+  
+  </head>
+<body>
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">TokensGen: Harnessing Condensed Tokens for Long Video Generation</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://vicky0522.github.io/Wenqi-Ouyang/">Wenqi Ouyang</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://xizaoqu.github.io/">Zeqi Xiao</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=qDsgBJAAAAAJ&hl=zh-CN">Danni Yang</a><sup>2</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://zhouyifan.net/about/">Yifan Zhou</a><sup>1</sup>,
+            </span>
+          </div>
+          <div class="is-size-5 publication-authors">
+          <span class="author-block">
+              <a href="https://williamyang1991.github.io/">Shuai Yang</a><sup>3</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=jZH2IPYAAAAJ&hl=en">Lei Yang</a><sup>2</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://jianlou.github.io/">Jianlou Si</a><sup>2</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://xingangpan.github.io/">Xingang Pan</a><sup>1</sup>
+            </span>
+          </div>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block"><sup>1</sup>S-Lab, Nanyang Technological University,</span>
+            <span class="author-block"><sup>2</sup>SenseTime Research,</span>
+          </div>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block"><sup>3</sup>Wangxuan Institute of Computer Technology, Peking University</span>
+          </div>
+          <div class="publication-authors my-3 has-text-centered">
+          <h1 class="title is-4">ICCV 2025</h1>
+          </div>
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="ai ai-arxiv"></i></span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+              <!-- <span class="link-block">
+                <a href="https://www.youtube.com/watch?v=MrKrnHhk8IA" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fab fa-youtube"></i></span>
+                  <span>Video</span>
+                </a>
+              </span> -->
+              <span class="link-block">
+                <a href="https://github.com/Vicky0522/TokensGen" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>Code</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero teaser">
+    <div class="container is-max-desktop">
+      <div class="hero-body">
+        <video id="teaser" autoplay muted loop playsinline height="100%">
+          <source src="static/videos/teaser.mp4"
+                  type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </section>
+  
+  <section class="section">
+    <div class="container is-max-desktop">
+      <!-- Abstract. -->
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              Generating consistent long videos is a complex challenge: while diffusion-based generative models generate visually impressive short clips, extending them to longer durations often leads to memory bottlenecks and long-term inconsistency. In this paper, we propose TokensGen, a novel two-stage framework that leverages condensed tokens to address these issues. Our method decomposes long video generation into three core tasks: (1) inner-clip semantic control, (2) long-term consistency control, and (3) inter-clip smooth transition. 
+            </p>
+            <p>
+            First, we train To2V (Token-to-Video), a short video diffusion model guided by text and video tokens, with a Video Tokenizer that condenses short clips into semantically rich tokens. Second, we introduce T2To (Text-to-Token), a video token diffusion transformer that generates all tokens at once, ensuring global consistency across clips. Finally, during inference, an adaptive FIFO-Diffusion strategy seamlessly connects adjacent clips, reducing boundary artifacts and enhancing smooth transitions.
+            </p>
+            <p>
+    Experimental results demonstrate that our approach significantly enhances long-term temporal and content coherence without incurring prohibitive computational overhead. By leveraging condensed tokens and pre-trained short video models, our method provides a scalable, modular solution for long video generation, opening new possibilities for storytelling, cinematic production, and immersive simulations.
+           </div>
+        </div>
+      </div>
+      <!--/ Abstract. -->
+  </section>
+
+<!-- Paper video. -->
+    <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <!--<h2 class="title is-3">Video</h2> -->
+        <div class="publication-video">
+          <iframe width="560" height="315" src="https://www.youtube.com/embed/F0XuCiGU5Dc?si=G2g9IpAbdDpJCiVd" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+    <!--/ Paper video. -->
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column  is-full">
+        <h2 class="title is-3">Visual Results</h2>
+        <h3 class="title is-4 mt-6">Generation</h3>
+        <div class="container">
+            <div id="carousel-demo3" class="owl-carousel carousel-with-captions">
+                
+                <div class="item item-steve">
+                <div class="carousel-caption">
+                <p>
+                A journey through a picturesque countryside on horseback. The rider, atop a well-groomed horse, traverses a variety of landscapes, including open fields, dirt paths lined with tall stone walls, and areas dense with lush trees. The setting is serene and bucolic, with the natural beauty of the environment highlighted by the soft, warm lighting of what appears to be either a sunrise or sunset. The atmosphere is tranquil, and the video captures the essence of a peaceful ride through rural scenery.
+                </p>
+                </div>
+                    <video poster="index.html" id="steve" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/horse_riding_1.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                <div class="item item-steve">
+                <div class="carousel-caption">
+                <p>
+                A serene journey along a dirt road meandering through a lush forest. The road is flanked by a variety of trees and shrubbery, with the sun casting dynamic shadows across the path. As the video progresses, the perspective travels down the road, offering changing views of the forested landscape. The natural setting is vibrant with greenery and the sky is a clear blue with occasional fluffy white clouds, suggesting a peaceful, sunny day.
+                </p>
+                </div>
+                    <video poster="index.html" id="steve" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/forest_road.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                  
+                <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  A person riding a horse on a dirt path through a lush forest environment. The rider appears to be wearing a hat and a coat, suggesting a setting that could be from a historical or adventure context. The horse moves steadily along the path, surrounded by dense greenery, including tall trees and underbrush. As the journey progresses, the scenery opens up to reveal a stunning backdrop of majestic mountains, with the path leading the rider closer to a serene blue river. The lighting changes throughout the video, with the initial scenes bathed in soft daylight and later scenes capturing the golden hues of the sun low on the horizon, creating a warm, atmospheric glow that enhances the natural beauty of the landscape.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/horse_riding_3.mp4" type="video/mp4">
+                    </video>
+                  </div>  
+                 <div class="item item-steve">
+                <div class="carousel-caption">
+                <p>
+                A serene and natural landscape during twilight. It begins with a view of a dirt path meandering through a lush grassy area, flanked by trees and wildflowers. As the video progresses, the path leads the viewer towards a tranquil body of water visible in the distance. The lighting is soft and dim, suggesting either dawn or dusk, with the sky painted in muted blues and the first hints of warmer tones near the horizon.
+                </p>
+                </div>
+                    <video poster="index.html" id="steve" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/road_to_river.mp4" type="video/mp4">
+                    </video>
+                  </div>
+     
+                  
+                  <div class="item item-steve">
+                <div class="carousel-caption">
+                <p>
+                A lone rider guides a horse along a rustic dirt track that weaves through tranquil countryside. Dressed in understated, dark clothing, the rider maintains a calm, measured pace while passing beneath leafy trees and across stretches of emerald grass. The route unfolds in gentle stages—first a canopy‑shaded lane, then an open meadow shimmering with morning (or dusk) light, and at last a quiet expanse of water whose mirrored surface captures the day’s soft glow—together painting a serene pastoral journey.
+                </p>
+                </div>
+                    <video poster="index.html" id="steve" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/horse_riding_2.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  A serene and expansive beach on a cloudy day, with the overcast sky casting a cool, blue-toned hue over the scene. The shoreline is gently caressed by the lapping waves of the ocean, creating a rhythmic and calming presence. In the distance, a row of houses can be seen, adding a sense of habitation and life to the otherwise tranquil and natural landscape. The beach itself appears to be mostly deserted, emphasizing the quiet and peaceful atmosphere.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/seaside.mp4" type="video/mp4">
+                    </video>
+                  </div> 
+                   
+ 
+                  
+                  <div class="item item-chair-tp">
+                  <div class="carousel-caption">
+                  <p>
+                  A lone swordsman—seemingly a samurai—makes his way down an exquisitely crafted trail inside a video game world. He wears traditional Japanese garb: a midnight‑hued kimono traced with delicate motifs, a conical straw hat, and a katana resting at his hip. With each deliberate step, the landscape transforms: shadowed woodland ablaze in autumn reds and golds slips into a sunlit glade that opens onto a tranquil stretch of coast. His calm, purposeful stride speaks of a quest woven deep into the game’s narrative.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="chair-tp" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/samurai.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                  <div class="item item-steve">
+                <div class="carousel-caption">
+                <p>
+                 The serene beauty of a river flowing through a rugged landscape at sunset. The river, filled with clear, rushing water, meanders through a terrain scattered with rocks and boulders. The surrounding mountains, bathed in the warm hues of the setting sun, create a majestic backdrop. The sky, painted with streaks of clouds, reflects a spectrum of colors from orange to blue, adding to the tranquil and picturesque setting.
+                </p>
+                </div>
+                    <video poster="index.html" id="steve" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/stone_river.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                  
+                  
+                   <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  A man's journey down a foggy, tree-lined road. The man is dressed in a period-appropriate outfit, suggesting a setting from the past, with a white shirt, vest, and dark pants, complemented by a hat. His pace is steady and deliberate, as he traverses the uneven, muddy path. The fog adds a layer of mystery and serenity to the scene, with the sunlight struggling to pierce through the dense mist, creating a soft, diffused light that bathes the landscape.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/foggy.mp4" type="video/mp4">
+                    </video>
+                  </div> 
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  The exhilarating experience of a mountain biker navigating a rugged dirt trail in a dense forest. The trail is uneven and strewn with natural obstacles such as rocks, roots, and occasional puddles, reflecting the challenging conditions of a typical mountain biking path. The surrounding woods are lush with a variety of green foliage, indicating a healthy, vibrant forest ecosystem. As the biker progresses, the trail presents varying degrees of difficulty, including narrow passages flanked by trees and larger rocks that require careful maneuvering.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/mountain_riding.mp4" type="video/mp4">
+                    </video>
+                  </div> 
+                  
+                  
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  The video depicts a sequence from a video game where the player is driving a red car along a winding rural highway at dawn. The environment is richly detailed, featuring rolling hills, distant farmhouses, and occasional wooden fences. The setting evokes a nostalgic mid-20th-century countryside. As the video progresses, the player navigates the car through different landscapes, including open fields bathed in golden sunlight and shaded forested sections with dappled light filtering through the trees.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/red_car.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  A serene maritime scene at dusk, with several small boats gently swaying on the calm surface of a body of water. The boats, moored by ropes, appear to be traditional, with a simple design and painted in shades of blue, creating a harmonious visual with the water. The backdrop features a rugged coastline, with rocks and landforms that suggest a natural harbor or cove. The lighting is soft and warm, indicative of the golden hour, which adds a tranquil and picturesque quality to the scene.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/boat.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                  
+                       
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  A serene and picturesque snowy mountain path, flanked by dense evergreen trees and a clear blue sky. The ground is blanketed in a thick layer of pristine snow, which sparkles under the bright sunlight. As the video progresses, the viewer is taken on a tranquil journey along the path, which meanders through the rugged terrain, offering glimpses of the majestic mountain landscape. The natural beauty of the scene is accentuated by the contrast between the white snow, the dark green of the pine trees, and the rocky outcrops that occasionally jut out from the snow-covered slopes.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/ice_mountain.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  The serene and atmospheric setting of a river meandering through a dense forest. The forest is lush with a variety of trees, some with thick canopies and others more sparse and skeletal. The ground is covered with grass and foliage, glistening with moisture, suggesting recent rain or morning dew. The sky is overcast, with fog hanging low, diffusing the light and creating a soft, ethereal glow that permeates the scene. As the video progresses, the perspective moves gently along the riverbank, revealing the tranquil flow of water and the rich textures of the environment.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/river.mp4" type="video/mp4">
+                    </video>
+                  </div>        
+    
+    
+     
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  The serene beauty of cherry blossoms in full bloom, gently swaying in the foreground, with a tranquil lake stretching out towards a stately building in the background. The overcast sky casts a soft, diffused light, enhancing the delicate pink hues of the flowers. Throughout the video, the focus remains on the cherry blossoms, while the building and lake provide a constant, picturesque backdrop. The ambiance is peaceful, with the subtle movement of the branches suggesting a light breeze.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/flower.mp4" type="video/mp4">
+                    </video>
+                  </div>    
+                  <div class="item item-blueshirt">
+                  <div class="carousel-caption">
+                  <p>
+                  A journey along a dirt road leading up to a hill with a panoramic view of a distant city. The progression of the frames shows the road winding through a natural landscape, with the cityscape gradually coming into clearer view as the camera moves forward. The sky is overcast, with a blanket of clouds diffusing the light, and the vegetation on either side of the road suggests a semi-arid region. As the video advances, the presence of human habitation becomes more apparent, with buildings and infrastructure like power lines entering the frame.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="blueshirt" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/generation/country_road.mp4" type="video/mp4">
+                    </video>
+                  </div>
+                 
+                  
+                       
+              
+            </div>
+            <div id="carousel-indicator3" class="has-text-centered mt-4">1/8</div>
+          </div>
+           
+          <h3 class="title is-4  mt-6">Editing</h3>
+          <div class="container">
+            <div id="carousel-demo4" class="owl-carousel carousel-with-captions">
+            
+                  <div class="item item-chair-tp">
+                  <div class="carousel-caption">
+                  <p>
+                  A child, likely a little girl, wanders down a narrow, earthen corridor carved through a sea of crimson poppies. The child is dressed in a golden princess dress with fluttering sleeves, and her sun‑kissed hair is gathered into a loose braid tied with a golden ribbon. As she steps forward, the towering blossoms sway at her shoulders, their vibrant reds giving way to softer greens and distant hues as the scene drifts toward a hazy, light‑washed horizon. Her pace is unhurried and inquisitive, fingertips grazing petals, suggesting a quiet journey of discovery amid the gentle rustle of summer blooms.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="chair-tp" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/editing/edit2_1_concat.mp4" type="video/mp4">
+                    </video>
+                  </div> 
+                
+                  <div class="item item-chair-tp">
+                  <div class="carousel-caption">
+                  <p>
+                  A white off-road vehicle navigates a snow-covered mountain road, surrounded by frosted pines and rugged hills. Snow kicks up behind it, hinting at the winter adventure ahead as it continues deeper into the silent wilderness.
+                  </p>
+                  </div>
+                    <video poster="index.html" id="chair-tp" autoplay controls muted loop playsinline style="width: 100%;">
+                      <source src="static/videos/editing/edit1_1_concat.mp4" type="video/mp4">
+                    </video>
+                  </div> 
+                  
+                 
+                  
+               
+                       
+              
+            </div>
+            <div id="carousel-indicator4" class="has-text-centered mt-4">1/1</div>
+          </div>
+</section>
+
+
+<section class="section" class="section comparison-section">
+    <div class="container is-fluid px-0">
+  
+      <div class="columns is-centered has-text-centered">
+  
+   <!-- Comparisons -->
+      
+        <div class="column is-full">
+          <h2 class="title is-3">Comparisons</h2>
+  
+          <!-- Interpolating. -->
+          <div class="container">
+            <div id="carousel-demo5" class="owl-carousel carousel-with-captions">
+              <div class="item item-steve">
+              <div class="carousel-caption">
+                  <p>
+                  A journey through a picturesque countryside on horseback. The rider, atop a well-groomed horse, traverses a variety of landscapes, including open fields, dirt paths lined with tall stone walls, and areas dense with lush trees. The setting is serene and bucolic, with the natural beauty of the environment highlighted by the soft, warm lighting of what appears to be either a sunrise or sunset. The atmosphere is tranquil, and the video captures the essence of a peaceful ride through rural scenery.
+                  </p>
+                  </div>
+                <video poster="index.html" id="steve" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/horse_1.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-chair-tp">
+              <div class="carousel-caption">
+                  <p>
+                  A serene and natural landscape during twilight. It begins with a view of a dirt path meandering through a lush grassy area, flanked by trees and wildflowers. As the video progresses, the path leads the viewer towards a tranquil body of water visible in the distance. The lighting is soft and dim, suggesting either dawn or dusk, with the sky painted in muted blues and the first hints of warmer tones near the horizon.
+                  </p>
+                  </div>
+                <video poster="index.html" id="chair-tp" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/other_1.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-shiba">
+              <div class="carousel-caption">
+                  <p>
+                  A person riding a horse on a dirt path through a lush forest environment. The rider appears to be wearing a hat and a coat, suggesting a setting that could be from a historical or adventure context. The horse moves steadily along the path, surrounded by dense greenery, including tall trees and underbrush. As the journey progresses, the scenery opens up to reveal a stunning backdrop of majestic mountains, with the path leading the rider closer to a serene blue river. The lighting changes throughout the video, with the initial scenes bathed in soft daylight and later scenes capturing the golden hues of the sun low on the horizon, creating a warm, atmospheric glow that enhances the natural beauty of the landscape.
+                  </p>
+                  </div>
+                <video poster="index.html" id="shiba" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/horse_2.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  The serene transition from late afternoon to dusk in a pastoral setting. Initially, the sun casts a warm glow over a grassy field, with trees dotting the landscape and a backdrop of majestic mountains. As time progresses, the light softens, and the colors become more muted, with the sky transitioning through shades of orange, pink, and purple before settling into the cooler tones of twilight. The presence of a rustic settlement with buildings and fences becomes more pronounced as the natural light fades, suggesting a harmonious blend of nature and rural life.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/other_2.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  A man's journey down a foggy, tree-lined road. The man is dressed in a period-appropriate outfit, suggesting a setting from the past, with a white shirt, vest, and dark pants, complemented by a hat. His pace is steady and deliberate, as he traverses the uneven, muddy path. The fog adds a layer of mystery and serenity to the scene, with the sunlight struggling to pierce through the dense mist, creating a soft, diffused light that bathes the landscape.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/human_3.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  A serene and expansive beach on a cloudy day, with the overcast sky casting a cool, blue-toned hue over the scene. The shoreline is gently caressed by the lapping waves of the ocean, creating a rhythmic and calming presence. In the distance, a row of houses can be seen, adding a sense of habitation and life to the otherwise tranquil and natural landscape. The beach itself appears to be mostly deserted, emphasizing the quiet and peaceful atmosphere.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/other_3.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  A man traversing through various terrains in a video game environment. He is dressed in a traditional Western outfit, complete with a hat, coat, and boots, suggesting a setting reminiscent of the American frontier era. The man moves with purpose, walking steadily down paths on open grassy fields. The paths finally take him to rocky canyons. Throughout his journey, the landscape changes, but his determined stride remains constant, indicating a sense of adventure or a mission to be accomplished within the game's narrative.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/human_1.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  A serene maritime scene at dusk, with several small boats gently swaying on the calm surface of a body of water. The boats, moored by ropes, appear to be traditional, with a simple design and painted in shades of blue, creating a harmonious visual with the water. The backdrop features a rugged coastline, with rocks and landforms that suggest a natural harbor or cove. The lighting is soft and warm, indicative of the golden hour, which adds a tranquil and picturesque quality to the scene.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/other_4.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  The video features a person exploring a vast, dimly lit cave with a flowing water body. The individual is equipped with a backpack and appears to be on an adventurous journey, navigating through the natural underground environment. The cave's interior is illuminated by natural light filtering in from an opening, revealing intricate rock formations and a diverse range of flora. As the person progresses, the cave transitions into a more open area with signs of advanced technology, contrasting the natural elements with a futuristic structure that stands prominently within the cave.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/human_2.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  The serene and majestic Golden Gate Bridge at night, illuminated by a series of orange and white lights that outline its iconic structure. The scene is set against a dusky blue sky, with the dark silhouettes of hills faintly visible in the background. The foreground features the restless, dark ocean with waves crashing onto the shore, adding a dynamic element to the otherwise tranquil nocturnal landscape. The overall atmosphere is one of calmness and grandeur, with the bridge standing as a testament to human engineering amidst the natural beauty of the sea and sky.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/other_5.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  The serene beauty of a river flowing through a rugged landscape at sunset. The river, filled with clear, rushing water, meanders through a terrain scattered with rocks and boulders. The surrounding mountains, bathed in the warm hues of the setting sun, create a majestic backdrop. The sky, painted with streaks of clouds, reflects a spectrum of colors from orange to blue, adding to the tranquil and picturesque setting.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/other_6.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-fullbody">
+              <div class="carousel-caption">
+                  <p>
+                  The video depicts a sequence from a video game where the player is driving a red car along a winding rural highway at dawn. The environment is richly detailed, featuring rolling hills, distant farmhouses, and occasional wooden fences. The setting evokes a nostalgic mid-20th-century countryside. As the video progresses, the player navigates the car through different landscapes, including open fields bathed in golden sunlight and shaded forested sections with dappled light filtering through the trees.
+                  </p>
+                  </div>
+                <video poster="index.html" id="fullbody" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/comparisons/vehicle_1.mp4" type="video/mp4">
+                </video>
+              </div>
+            </div>
+            <div id="carousel-indicator5" class="has-text-centered mt-4">1/6</div>
+          </div>
+          <br/>
+          <!--/ Interpolating. -->
+   
+        </div>
+      
+      <!--/ Animation. -->
+      
+      </div>
+  </section>
+  
+  <section class="section" class="section comparison-section">
+    <div class="container is-fluid px-0">
+  
+      <div class="columns is-centered has-text-centered">
+  
+   <!-- Comparisons -->
+      
+        <div class="column is-full">
+          <h2 class="title is-3">Ablation Study</h2>
+  
+          <!-- Interpolating. -->
+          <div class="container">
+            <div id="carousel-demo6" class="owl-carousel carousel-with-captions">
+              <div class="item item-steve">
+              <div class="carousel-caption">
+                  <p>
+                  The video features a video game character traversing a lush, grassy field. The character appears to be a warrior or knight, clad in dark armor, with a sword sheathed at their side and a shield on their back. They have a helmet with horns, giving them a formidable appearance. As the character moves through the environment, they pass by an array of green pine trees and approach an ancient stone fortress with tall towers and crumbling walls, partially enveloped in a light mist. The setting conveys a medieval fantasy world, rich with natural beauty and a sense of adventure.
+                  </p>
+                  </div>
+                <video poster="index.html" id="steve" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/ablation/abl_1.mp4" type="video/mp4">
+                </video>
+              </div>
+              <div class="item item-chair-tp">
+              <div class="carousel-caption">
+                  <p>
+                  The video depicts a character navigating through a post-apocalyptic environment within a video game. The character is equipped for survival, carrying weapons and gear on their back, and is dressed in rugged attire suitable for harsh conditions. The journey takes them along a damaged road with signs of destruction and abandonment. The setting is realistic and immersive, with dynamic weather and lighting that contribute to the game's atmosphere.
+                  </p>
+                  </div>
+                <video poster="index.html" id="chair-tp" autoplay controls muted loop playsinline style="width: 100%;">
+                  <source src="static/videos/ablation/abl_2.mp4" type="video/mp4">
+                </video>
+              </div>
+            </div>
+            <div id="carousel-indicator6" class="has-text-centered mt-4">1/2</div>
+          </div>
+          <br/>
+          <!--/ Interpolating. -->
+   
+        </div>
+      
+      <!--/ Animation. -->
+      
+      </div>
+  </section>
+
+<!--
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@article{ouyang2025tokensgen,
+      author    = {Ouyang, Wenqi and Xiao, Zeqi and Yang, Danni and Zhou, Yifan and Yang, Shuai and Yang, Lei and Si, Jianlou and Pan, Xingang},
+      title     = {TokensGen: Harnessing Condensed Tokens for Long Video Generation},
+      journal   = {???},
+      year      = {2025},
+}
+  </code></pre>
+  </div>
+</section>
+-->
+
+</body>
+
+<footer class="footer">
+    <!-- <div class="container">
+      <div class="content has-text-centered">
+        <a class="icon-link" href="https://arxiv.org/abs/2309.03897" target="_blank">
+          <i class="fas fa-file-pdf"></i>
+        </a>
+        <a class="icon-link" href="https://github.com/sczhou/ProPainter" target="_blank">
+          <i class="fab fa-github"></i>
+        </a>
+        <a class="icon-link" href="https://huggingface.co/spaces/sczhou/ProPainter" target="_blank">
+          <img src="./assets/images/hf_black.png">
+        </a>
+        <a class="icon-link" href="https://youtu.be/92EHfgCO5-Q" target="_blank">
+          <i class="fab fa-youtube"></i>
+        </a>
+      </div> -->
+      <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <div class="columns is-centered"><p>
+              This website template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io" target="_blank">Nerfies</a> and <a href="https://i2vedit.github.io/" target="_blank">I2VEdit</a>. 
+            </p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+     
+    </div>
+  </footer>
+
+
+</html>
+
