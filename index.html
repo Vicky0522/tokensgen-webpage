@@ -251,6 +251,10 @@
     hyphens: auto;
     overflow-wrap: anywhere;
   }
+  
+  /* 高亮用的蓝色（自定色值即可） */
+.caption-color { color:#EB48C7; font-weight:700 !important; }
+.abstract-font-style { font-weight:800 !important; }
 
   /* 指示器与下方标题间距（可调） */
   .carousel-indicator-spaced {
@@ -407,10 +411,10 @@
           <h2 class="title is-3">Abstract</h2>
           <div class="content has-text-justified">
             <p>
-              Generating consistent long videos is a complex challenge: while diffusion-based generative models generate visually impressive short clips, extending them to longer durations often leads to memory bottlenecks and long-term inconsistency. In this paper, we propose TokensGen, a novel two-stage framework that leverages condensed tokens to address these issues. Our method decomposes long video generation into three core tasks: (1) inner-clip semantic control, (2) long-term consistency control, and (3) inter-clip smooth transition. 
+              Generating consistent long videos is a complex challenge: while diffusion-based generative models generate visually impressive short clips, extending them to longer durations often leads to memory bottlenecks and long-term inconsistency. In this paper, we propose <span class="abstract-font-style">TokensGen</span>, a novel two-stage framework that leverages condensed tokens to address these issues. Our method decomposes long video generation into three core tasks: (1) inner-clip semantic control, (2) long-term consistency control, and (3) inter-clip smooth transition. 
             </p>
             <p>
-            First, we train To2V (Token-to-Video), a short video diffusion model guided by text and video tokens, with a Video Tokenizer that condenses short clips into semantically rich tokens. Second, we introduce T2To (Text-to-Token), a video token diffusion transformer that generates all tokens at once, ensuring global consistency across clips. Finally, during inference, an adaptive FIFO-Diffusion strategy seamlessly connects adjacent clips, reducing boundary artifacts and enhancing smooth transitions.
+            First, we train <span class="abstract-font-style">To2V (Token-to-Video)</span>, a short video diffusion model guided by text and video tokens, with a Video Tokenizer that condenses short clips into semantically rich tokens. Second, we introduce <span class="abstract-font-style">T2To (Text-to-Token)</span>, a video token diffusion transformer that generates all tokens at once, ensuring global consistency across clips. Finally, during inference, an adaptive FIFO-Diffusion strategy seamlessly connects adjacent clips, reducing boundary artifacts and enhancing smooth transitions.
             </p>
             <p>
     Experimental results demonstrate that our approach significantly enhances long-term temporal and content coherence without incurring prohibitive computational overhead. By leveraging condensed tokens and pre-trained short video models, our method provides a scalable, modular solution for long video generation, opening new possibilities for storytelling, cinematic production, and immersive simulations.
@@ -631,7 +635,7 @@
                   <div class="item item-chair-tp">
                   <div class="carousel-caption">
                   <p>
-                  A child, likely a little girl, wanders down a narrow, earthen corridor carved through a sea of crimson poppies. The child is dressed in a golden princess dress with fluttering sleeves, and her sun‑kissed hair is gathered into a loose braid tied with a golden ribbon. As she steps forward, the towering blossoms sway at her shoulders, their vibrant reds giving way to softer greens and distant hues as the scene drifts toward a hazy, light‑washed horizon. Her pace is unhurried and inquisitive, fingertips grazing petals, suggesting a quiet journey of discovery amid the gentle rustle of summer blooms.
+                  A child, likely a little girl, wanders down a narrow, earthen corridor carved through a sea of crimson poppies. The child is dressed in a <span class="caption-color">golden princess</span> dress with fluttering sleeves, and her sun‑kissed hair is gathered into a loose braid tied with a <span class="caption-color">golden</span> ribbon. As she steps forward, the towering blossoms sway at her shoulders, their vibrant reds giving way to softer greens and distant hues as the scene drifts toward a hazy, light‑washed horizon. Her pace is unhurried and inquisitive, fingertips grazing petals, suggesting a quiet journey of discovery amid the gentle rustle of summer blooms.
                   </p>
                   </div>
                     <video poster="index.html" id="chair-tp" autoplay controls muted loop playsinline style="width: 100%;">
@@ -642,7 +646,7 @@
                   <div class="item item-chair-tp">
                   <div class="carousel-caption">
                   <p>
-                  A white off-road vehicle navigates a snow-covered mountain road, surrounded by frosted pines and rugged hills. Snow kicks up behind it, hinting at the winter adventure ahead as it continues deeper into the silent wilderness.
+                  A white off-road vehicle navigates a <span class="caption-color">snow-covered mountain road</span>, surrounded by frosted pines and rugged hills. <span class="caption-color">Snow kicks up behind it</span>, hinting at the <span class="caption-color">winter adventure</span> ahead as it continues deeper into the silent wilderness.
                   </p>
                   </div>
                     <video poster="index.html" id="chair-tp" autoplay controls muted loop playsinline style="width: 100%;">
@@ -891,8 +895,19 @@
         <div class="column is-8">
           <div class="content">
             <div class="columns is-centered"><p>
-              This website template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io" target="_blank">Nerfies</a> and <a href="https://i2vedit.github.io/" target="_blank">I2VEdit</a>. 
+              This website template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io" target="_blank">Nerfies</a> and <a href="https://i2vedit.github.io/" target="_blank">I2VEdit</a>. Comparison results include demos generated by 
+              <a href="https://github.com/Yuanshi9815/Video-Infinity" target="_blank" rel="noopener noreferrer">Video‑Infinity</a>,
+              <a href="https://github.com/TencentARC/DiTCtrl" target="_blank" rel="noopener noreferrer">DitCtrl</a>,
+              <a href="https://github.com/jjihwan/FIFO-Diffusion_public" target="_blank" rel="noopener noreferrer">FIFO-Diffusion</a>,
+              <a href="https://github.com/Picsart-AI-Research/StreamingT2V/tree/StreamingModelscope" target="_blank" rel="noopener noreferrer">StreamingT2V</a>,
+              <a href="https://github.com/YangLing0818/VideoTetris" target="_blank" rel="noopener noreferrer">VideoTetris</a> and 
+              <a href="https://github.com/AILab-CVC/FreeNoise" target="_blank" rel="noopener noreferrer">FreeNoise</a>.
             </p></div>
+            <div class="columns is-centered">
+            <p>
+              This website is licensed under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons Attribution-ShareAlike 4.0 International License</a>. This means you are free to borrow and modify the source code of this website as long as you link back to the <a href="https://github.com/nerfies/nerfies.github.io" target="_blank">Nerfies</a> page in the footer. 
+            </p>
+          </div>
           </div>
         </div>
       </div>
